@@ -1,22 +1,18 @@
+const CatboxRedis = require('catbox-redis');
+const Good = require('good');
+const HapiSwagger = require('hapi-swagger');
+const Inert = require('inert');
 const {
   Server
 } = require('hapi');
-
-const Good = require('good');
-const Inert = require('inert');
 const Vision = require('vision');
 
-const HapiSwagger = require('hapi-swagger');
-const Pack = require('../package.json');
-const CatboxRedis = require('catbox-redis');
-
-const Limiter = require('./plugins/limiter/');
-
-const fs = require('fs');
 const path = require('path');
 const Zlib = require('zlib');
 
-const CONTROLLER_PATH = './controllers/';
+const Limiter = require('./plugins/limiter/');
+
+const controllers = require('././controllers/');
 
 const server = new Server({
   cache: [{
@@ -128,15 +124,40 @@ module.exports = function (startServer = true) {
       return;
     }
 
-    // SETUP ROUTES
-    fs.readdir(path.resolve(__dirname, CONTROLLER_PATH), (err, files) => {
-      if (err) {
-        throw err;
+    // AJAX/FETCH CALLS
+    server.route({
+      method: 'OPTIONS',
+      path: '/{param*}',
+      config: {
+        auth: false,
+        handler: (request, reply) => {
+          const accessControlAllowHeaders = [];
+          Object.keys(request.headers).forEach((index) => {
+            accessControlAllowHeaders.push(request.headers[index]);
+          });
+          reply().type('text/plain')
+            .header('Access-Control-Allow-Origin', '*')
+            .header('Access-Control-Allow-Headers', accessControlAllowHeaders.join(', ').trim())
+            .header('Access-Control-Allow-Methods', 'HEAD,PUT,GET,POST,DELETE');
+        }
       }
-      files.forEach((file) => {
-        require(path.resolve(__dirname, CONTROLLER_PATH, file)).setupRoutes(server); // eslint-disable-line global-require
-      });
     });
+
+    // ROOT
+    server.route({
+      method: 'GET',
+      path: '/{param*}',
+      handler: {
+        directory: {
+          path: path.join(__dirname, '../static'),
+          index: true,
+          lookupCompressed: true
+        }
+      }
+    });
+
+    // SETUP ROUTES
+    controllers.initialize(server);
 
     if (startServer) {
       server.decoder('special', (options) => Zlib.createGunzip(options));

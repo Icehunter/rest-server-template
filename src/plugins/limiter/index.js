@@ -1,7 +1,7 @@
 const Boom = require('boom');
 const Hoek = require('hoek');
-const redis = require('redis');
 const RateLimiter = require('ratelimiter');
+const redis = require('redis');
 
 const pkg = require('./package.json');
 

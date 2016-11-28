@@ -24,8 +24,8 @@ global.Pack = require('./package.json');
 const source = require('./src/');
 
 const cluster = require('cluster');
-const os = require('os');
 const fs = require('fs');
+const os = require('os');
 
 const fork = () => {
   // Let's get cluster count based on total memory and container size if not default of 1.5GB

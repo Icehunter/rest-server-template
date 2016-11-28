@@ -10,7 +10,8 @@
   },
   "plugins": [],
   "globals": {
-    "Config": true
+    "Config": true,
+    "Pack": true
   },
   "settings": {
     "ecamscript": 6

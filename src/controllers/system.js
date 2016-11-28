@@ -1,37 +1,27 @@
 const path = require('path');
+
+const Boom = require('boom');
 const Joi = require('joi');
+
 const versionParser = require('../helpers/version-parser.js');
 
-const setupRoutes = (server) => {
-  // AJAX/FETCH CALLS
-  server.route({
-    method: 'OPTIONS',
-    path: '/{param*}',
-    config: {
-      auth: false,
-      handler: (request, reply) => {
-        const accessControlAllowHeaders = [];
-        Object.keys(request.headers).forEach((index) => {
-          accessControlAllowHeaders.push(request.headers[index]);
-        });
-        reply().type('text/plain')
-          .header('Access-Control-Allow-Origin', '*')
-          .header('Access-Control-Allow-Headers', accessControlAllowHeaders.join(', ').trim())
-          .header('Access-Control-Allow-Methods', 'HEAD,PUT,GET,POST,DELETE');
-      }
-    }
-  });
+const systemInfoCache = (next) => {
+  try {
+    const versionInfo = versionParser.getVersionInfo(path.join(__dirname, '../../'));
+    process.nextTick(() => next(null, versionInfo));
+  } catch (err) {
+    process.nextTick(() => next(err));
+  }
+};
 
-  // ROOT
-  server.route({
-    method: 'GET',
-    path: '/{param*}',
-    handler: {
-      directory: {
-        path: path.join(__dirname, '../../static'),
-        index: true,
-        lookupCompressed: true
-      }
+const initialize = (server) => {
+  // SETUP CACHE FUNCTIONS
+  server.method('systemInfo', systemInfoCache, {
+    cache: {
+      cache: 'redisCache',
+      expiresIn: 60 * 1000,
+      segment: 'systemInfo',
+      generateTimeout: 5000
     }
   });
 
@@ -75,7 +65,6 @@ const setupRoutes = (server) => {
   });
 
   // SYSTEM INFO
-  // STATUS
   server.route({
     method: 'GET',
     path: '/system/info',
@@ -114,12 +103,17 @@ const setupRoutes = (server) => {
         }
       },
       handler: (request, reply) => {
-        reply(versionParser.getVersionInfo(path.join(__dirname, '../../')));
+        server.methods.systemInfo((err, result) => {
+          if (err) {
+            return reply(Boom.expectationFailed(err.message));
+          }
+          return reply(result);
+        });
       }
     }
   });
 };
 
 module.exports = {
-  setupRoutes
+  initialize
 };
