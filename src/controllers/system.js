@@ -1,30 +1,8 @@
 const path = require('path');
 
-const Boom = require('boom');
 const Joi = require('joi');
 
-const versionParser = require('../helpers/version-parser.js');
-
-const systemInfoCache = (next) => {
-  try {
-    const versionInfo = versionParser.getVersionInfo(path.join(__dirname, '../../'));
-    process.nextTick(() => next(null, versionInfo));
-  } catch (err) {
-    process.nextTick(() => next(err));
-  }
-};
-
 const initialize = (server) => {
-  // SETUP CACHE FUNCTIONS
-  server.method('systemInfo', systemInfoCache, {
-    cache: {
-      cache: 'redisCache',
-      expiresIn: 60 * 1000,
-      segment: 'systemInfo',
-      generateTimeout: 5000
-    }
-  });
-
   // STATUS
   server.route({
     method: 'GET',
@@ -103,12 +81,7 @@ const initialize = (server) => {
         }
       },
       handler: (request, reply) => {
-        server.methods.systemInfo((err, result) => {
-          if (err) {
-            return reply(Boom.expectationFailed(err.message));
-          }
-          return reply(result);
-        });
+        reply(global.Helpers.versionParser.getVersionInfo(path.join(__dirname, '../../')));
       }
     }
   });
